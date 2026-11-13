@@ -22,13 +22,12 @@
 
 ### 📚 3. Academic Management
 * **Curriculum Management:** Students view major curricula, compulsory and elective courses, credits, prerequisites, and automated completion status tracking.
-* **Semester Management:** Admins configure academic semesters, timelines, course registration windows, and examination schedules.
+* **Semester Management:** Admins configure academic semesters, timelines.
 * **Faculty Management:** Admins manage faculty records (Faculty Code, Name, Email, Phone) with safety restrictions against deleting faculties linked to active courses or enrolled students.
 * **Course Management:** Admins manage the course catalog (Course Code, Name, Credits, Managing Faculty, Prerequisites) with protection against deleting active or historical courses.
 * **Class Section Management:** Admins manage class sections per semester, including Class Code, assigned lecturer, maximum capacity, current enrollment, room, and schedules.
 
 ### 📊 4. Grading & Attendance Management
-* **Attendance Management:** Lecturers record daily attendance for assigned active sections with automatic attendance rate calculations.
 * **Gradebook Management:** Lecturers record midterm, assignment, attendance, and final exam marks (validated 0.0–10.0) to compute weighted final course grades and letter grades.
 * **GPA Calculation:** Automatically calculates Semester GPA and Cumulative GPA based on finalized academic results and credit-weighted rules.
 * **Academic Transcript Viewing:** Allows students to view finalized component marks, exam results, letter grades, and updated GPA history.
