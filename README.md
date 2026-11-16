@@ -1,6 +1,6 @@
 # 🎓 PROJECT: STUDENT MANAGEMENT SYSTEM
 > **Course:** Software Engineering  
-> **Tech Stack:** Python, MySQL, HTML, CSS, JavaScript  
+> **Tech Stack:** Python, SQL Sever, HTML, CSS, JavaScript  
 > **Supported Tools:** Draw.io, SSMS, Visual Studio Code, Figma
 
 ---
