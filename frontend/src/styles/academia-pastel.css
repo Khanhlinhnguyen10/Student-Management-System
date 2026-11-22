@@ -1,0 +1,590 @@
+
+/* =====================================================
+   ACADEMIA - PREMIUM PASTEL BLUE DESIGN SYSTEM
+   Student Management System - Group 05
+   ===================================================== */
+
+
+/* 1. GLOBAL COLOR SYSTEM */
+
+.academia-ui {
+  --aca-background: #F4F8FD;
+  --aca-sidebar: #D6E7F8;
+  --aca-sidebar-active: #476FA9;
+
+  --aca-primary: #476FA9;
+  --aca-primary-hover: #3D6399;
+
+  --aca-blue-soft: #EAF3FC;
+  --aca-blue-medium: #9CC7ED;
+
+  --aca-mint: #D9F1E7;
+  --aca-lavender: #ECE7FA;
+  --aca-peach: #FFF0E2;
+
+  --aca-surface: #FFFFFF;
+  --aca-text: #263B54;
+  --aca-muted: #71849A;
+  --aca-border: #DFE9F4;
+
+  --aca-danger: #B9384A;
+  --aca-danger-hover: #982D3D;
+
+  --aca-shadow:
+    0 5px 20px rgba(74, 111, 157, 0.07);
+
+  min-height: 100vh;
+  background: var(--aca-background);
+  color: var(--aca-text);
+}
+
+
+/* 2. SIDEBAR */
+
+.academia-ui .aca-sidebar {
+  background: var(--aca-sidebar);
+  border-color: #C7DCEE;
+
+  width: 16rem;
+  flex: 0 0 16rem;
+
+  overflow-x: hidden;
+
+  transition:
+    width 220ms ease,
+    flex-basis 220ms ease,
+    padding 220ms ease,
+    background 180ms ease;
+}
+
+
+/* Sidebar Logo */
+
+.academia-ui .aca-logo {
+  color: #365D91;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.academia-ui .aca-logo-symbol {
+  background: linear-gradient(
+    145deg,
+    #9CC7ED,
+    #709FD2
+  );
+
+  color: #FFFFFF;
+
+  box-shadow:
+    0 4px 12px rgba(100, 148, 202, 0.16);
+
+  flex-shrink: 0;
+}
+
+.academia-ui .aca-brand-text {
+  transition: opacity 180ms ease;
+}
+
+
+/* Sidebar Section Label */
+
+.academia-ui .aca-sidebar-section-label {
+  color: #829AB3;
+}
+
+
+/* Sidebar Navigation */
+
+.academia-ui .aca-nav {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  min-height: 42px;
+
+  padding: 10px 13px;
+
+  border-radius: 11px;
+
+  color: #56718D;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  white-space: nowrap;
+
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.academia-ui .aca-nav:hover {
+  background: #C5DDFC;
+  color: #365D91;
+}
+
+
+/* Active Navigation */
+
+.academia-ui .aca-nav.is-active {
+  background: #476FA9;
+  color: #FFFFFF;
+
+  font-weight: 700;
+
+  box-shadow:
+    inset 4px 0 #C5DFFC,
+    0 3px 9px rgba(71, 111, 169, 0.20);
+}
+
+.academia-ui .aca-nav.is-active:hover {
+  background: #3F6698;
+  color: #FFFFFF;
+}
+
+.academia-ui .aca-nav.is-active svg {
+  color: #FFFFFF;
+  stroke: #FFFFFF;
+}
+
+
+/* Disabled Navigation */
+
+.academia-ui .aca-nav.is-disabled {
+  color: #95A6B8;
+  cursor: default;
+}
+
+.academia-ui .aca-nav.is-disabled:hover {
+  background: transparent;
+}
+
+
+/* 3. SIDEBAR COLLAPSE BUTTON */
+
+.academia-ui .aca-sidebar-toggle {
+  width: 36px;
+  height: 36px;
+
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #D8E5F2;
+  border-radius: 10px;
+
+  background: #EDF5FD;
+  color: #476FA9;
+
+  cursor: pointer;
+
+  transition: all 180ms ease;
+}
+
+.academia-ui .aca-sidebar-toggle:hover {
+  background: #D6E8F9;
+  color: #315D91;
+  border-color: #B7D1EB;
+}
+
+.academia-ui .aca-sidebar-toggle:active {
+  transform: scale(0.95);
+}
+
+
+/* 4. COLLAPSED SIDEBAR */
+
+@media (min-width: 768px) {
+
+  .academia-ui.is-sidebar-collapsed .aca-sidebar {
+    width: 84px;
+    min-width: 84px;
+    flex: 0 0 84px;
+
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* Center logo */
+
+  .academia-ui.is-sidebar-collapsed .aca-brand {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Hide brand text */
+
+  .academia-ui.is-sidebar-collapsed .aca-brand-text {
+    display: none;
+  }
+
+  /* Hide section label */
+
+  .academia-ui.is-sidebar-collapsed
+  .aca-sidebar-section-label {
+    display: none;
+  }
+
+  /* One menu item per row */
+
+  .academia-ui.is-sidebar-collapsed .aca-sidebar nav {
+    grid-template-columns: 1fr;
+  }
+
+  /* Center menu items */
+
+  .academia-ui.is-sidebar-collapsed .aca-nav {
+    justify-content: center;
+
+    padding-left: 8px;
+    padding-right: 8px;
+
+    gap: 0;
+
+    font-size: 0;
+  }
+
+  /* Hide full menu labels */
+
+  .academia-ui.is-sidebar-collapsed .aca-nav span {
+    display: none;
+  }
+
+  /* Show abbreviated menu labels */
+
+  .academia-ui.is-sidebar-collapsed .aca-nav::after {
+    content: attr(data-short);
+
+    display: block;
+
+    font-size: 12px;
+    font-weight: 750;
+
+    letter-spacing: 0.02em;
+  }
+
+  /* Keep active menu highlighted */
+
+  .academia-ui.is-sidebar-collapsed
+  .aca-nav.is-active {
+    background: #476FA9;
+    color: #FFFFFF;
+
+    box-shadow:
+      0 3px 9px rgba(71, 111, 169, 0.20);
+  }
+
+}
+
+
+/* 5. HEADER */
+
+.academia-ui .aca-header {
+  background: #FFFFFF;
+
+  border-bottom: 1px solid var(--aca-border);
+
+  box-shadow:
+    0 2px 8px rgba(65, 103, 150, 0.035);
+}
+
+
+/* 6. MAIN CONTENT */
+
+.academia-ui .aca-content {
+  min-height: calc(100vh - 70px);
+  background: var(--aca-background);
+}
+
+
+/* 7. CARDS */
+
+.academia-ui .aca-panel {
+  background: var(--aca-surface);
+
+  border: 1px solid var(--aca-border);
+  border-radius: 16px;
+
+  box-shadow: var(--aca-shadow);
+}
+
+
+/* 8. PRIMARY BUTTON */
+
+.academia-ui .aca-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  border-radius: 10px;
+
+  background: var(--aca-primary);
+
+  padding: 11px 19px;
+
+  color: #FFFFFF;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  transition: all 180ms ease;
+}
+
+.academia-ui .aca-primary-btn:hover:not(:disabled) {
+  background: var(--aca-primary-hover);
+  transform: translateY(-1px);
+}
+
+.academia-ui .aca-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+/* 9. SECONDARY BUTTON */
+
+.academia-ui .aca-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #D5E4F2;
+  border-radius: 10px;
+
+  background: #F8FBFF;
+
+  padding: 10px 17px;
+
+  color: #426A9D;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.academia-ui .aca-secondary-btn:hover:not(:disabled) {
+  background: #EAF4FF;
+}
+
+.academia-ui .aca-secondary-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+
+/* 10. LOGOUT BUTTON - DEEP RED */
+
+.academia-ui .aca-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 9px 16px;
+
+  background: #B9384A;
+  color: #FFFFFF;
+
+  border: 1px solid #B9384A;
+  border-radius: 10px;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  box-shadow:
+    0 3px 9px rgba(185, 56, 74, 0.16);
+
+  transition: all 180ms ease;
+}
+
+.academia-ui .aca-logout-btn:hover:not(:disabled) {
+  background: #982D3D;
+  border-color: #982D3D;
+  color: #FFFFFF;
+
+  box-shadow:
+    0 5px 12px rgba(152, 45, 61, 0.24);
+
+  transform: translateY(-1px);
+}
+
+.academia-ui .aca-logout-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+/* 11. INPUT FIELDS */
+
+.academia-ui .aca-input {
+  width: 100%;
+  min-height: 44px;
+
+  border: 1px solid #D6E4F1;
+  border-radius: 10px;
+
+  background: #FCFDFF;
+
+  padding: 10px 13px;
+
+  color: var(--aca-text);
+
+  font-size: 14px;
+
+  outline: none;
+
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.academia-ui .aca-input:focus {
+  border-color: #7CAAD9;
+
+  box-shadow:
+    0 0 0 3px rgba(156, 199, 237, 0.27);
+}
+
+.academia-ui .aca-input:disabled {
+  background: #F0F5FB;
+  cursor: not-allowed;
+}
+
+.academia-ui .aca-input::placeholder {
+  color: #98A8B8;
+}
+
+.academia-ui .aca-field-label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #385572;
+
+  font-size: 14px;
+  font-weight: 650;
+}
+
+
+/* 12. PAGE TITLES */
+
+.academia-ui .aca-title {
+  color: #345D90;
+
+  font-weight: 750;
+  letter-spacing: -0.025em;
+}
+
+.academia-ui .aca-muted {
+  color: var(--aca-muted);
+}
+
+
+/* 13. DATA TABLE */
+
+.academia-ui .aca-table {
+  width: 100%;
+
+  border-collapse: collapse;
+
+  font-size: 13px;
+}
+
+.academia-ui .aca-table th {
+  background: #EDF5FF;
+
+  padding: 13px 15px;
+
+  color: #476586;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  text-align: left;
+}
+
+.academia-ui .aca-table td {
+  padding: 14px 15px;
+
+  border-bottom: 1px solid #EAF1F8;
+}
+
+.academia-ui .aca-table tbody tr:hover {
+  background: #F7FBFF;
+}
+
+
+/* 14. STATUS TAGS */
+
+.academia-ui .aca-tag-mint {
+  display: inline-flex;
+  align-items: center;
+
+  border-radius: 999px;
+
+  background: var(--aca-mint);
+
+  padding: 5px 11px;
+
+  color: #256D60;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.academia-ui .aca-tag-lavender {
+  display: inline-flex;
+
+  border-radius: 999px;
+
+  background: var(--aca-lavender);
+
+  padding: 5px 11px;
+
+  color: #66568A;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.academia-ui .aca-tag-peach {
+  display: inline-flex;
+
+  border-radius: 999px;
+
+  background: var(--aca-peach);
+
+  padding: 5px 11px;
+
+  color: #986039;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
+/* 15. ACCESSIBILITY */
+
+.academia-ui :is(
+  button,
+  a,
+  input,
+  select
+):focus-visible {
+  outline: 3px solid #9CC7ED;
+  outline-offset: 3px;
+}
+
+
+/* 16. REDUCED MOTION */
+
+@media (prefers-reduced-motion: reduce) {
+  .academia-ui *,
+  .academia-ui *::before,
+  .academia-ui *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

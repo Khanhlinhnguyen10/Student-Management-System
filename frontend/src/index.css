@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background-color: #f8fafc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ==========================================================
+   STUDENT MANAGEMENT SYSTEM - GLOBAL TYPOGRAPHY
+   Applies to Administrator, Student and Lecturer.
+   ========================================================== */
+
+:root {
+  --sms-font-body:
+    "Inter",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+
+  --sms-font-heading:
+    "Plus Jakarta Sans",
+    "Inter",
+    "Segoe UI",
+    sans-serif;
+
+  /* Tailwind CSS v4 font-sans compatibility */
+  --font-sans: var(--sms-font-body);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ----------------------------------------------------------
+   GLOBAL BODY TYPOGRAPHY
+   ---------------------------------------------------------- */
+
+html,
+body,
+#root {
+  font-family: var(--sms-font-body);
+}
+
+/* ----------------------------------------------------------
+   HEADINGS - PLUS JAKARTA SANS
+   ---------------------------------------------------------- */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--sms-font-heading);
+  letter-spacing: -0.025em;
+}
+
+/* ----------------------------------------------------------
+   INTERACTIVE ELEMENTS - INTER
+   ---------------------------------------------------------- */
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--sms-font-body);
+}
+
+/* ----------------------------------------------------------
+   TABLES AND NAVIGATION
+   ---------------------------------------------------------- */
+
+table,
+th,
+td,
+nav {
+  font-family: var(--sms-font-body);
+}
+
+/* ----------------------------------------------------------
+   TAILWIND FONT-SANS OVERRIDE
+   ---------------------------------------------------------- */
+
+.font-sans {
+  font-family: var(--sms-font-body);
+}
+
+/* ----------------------------------------------------------
+   BUTTON TYPOGRAPHY
+   ---------------------------------------------------------- */
+
+button {
+  letter-spacing: -0.01em;
+}
+
+/* ----------------------------------------------------------
+   ACCESSIBLE FONT RENDERING
+   ---------------------------------------------------------- */
+
+body {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
