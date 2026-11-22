@@ -1,0 +1,475 @@
+
+"""Assign Lecturer Repository - Student Management System Group 05.
+
+Use Case 40: Assign Lecturer to Class Sections.
+
+Reads:
+- Semesters
+- Class sections, including their course faculty
+- Lecturers and their faculties
+
+Writes:
+- Atomically assign a lecturer
+- Check teaching schedule conflicts before committing
+
+No schema modifications.
+"""
+
+from app.repositories.transaction import connection_scope
+
+
+class AssignmentError(RuntimeError):
+    """General assignment error."""
+
+
+class AssignmentNotFoundError(AssignmentError):
+    """Class section or lecturer does not exist."""
+
+
+class AssignmentScheduleError(AssignmentError):
+    """Schedule is incomplete or invalid."""
+
+
+class AssignmentScheduleConflictError(AssignmentScheduleError):
+    """Teaching schedule conflicts with another class."""
+
+
+class AssignmentBusyError(AssignmentError):
+    """Cannot obtain the transaction lock."""
+
+
+class AssignLecturerRepository:
+
+    def __init__(self, connection_factory=None):
+        self._connection_factory = connection_factory
+
+    @staticmethod
+    def _date_text(value):
+        if value is None:
+            return None
+
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+
+        return str(value)
+
+    @staticmethod
+    def _time_text(value):
+        if value is None:
+            return None
+
+        if hasattr(value, "strftime"):
+            return value.strftime("%H:%M")
+
+        return str(value)[:5]
+
+    # =========================================
+    # READ HELPER
+    # =========================================
+
+    def _read_rows(self, sql, params=()):
+        with connection_scope(
+            connection_factory=self._connection_factory
+        ) as conn:
+            cursor = conn.cursor()
+
+            try:
+                cursor.execute(sql, *params)
+
+                return [
+                    tuple(row)
+                    for row in cursor.fetchall()
+                ]
+            finally:
+                cursor.close()
+
+    # =========================================
+    # LIST SEMESTERS
+    # =========================================
+
+    def list_semesters(self):
+        sql = """
+            SELECT
+                s.semesterId,
+                s.semesterName,
+                s.academicYear,
+                s.startDate,
+                s.endDate
+            FROM dbo.Semesters AS s
+            ORDER BY
+                s.startDate DESC,
+                s.semesterId DESC;
+        """
+
+        rows = self._read_rows(sql)
+
+        return [
+            {
+                "semesterId": row[0],
+                "semesterName": row[1],
+                "academicYear": row[2],
+                "startDate": self._date_text(row[3]),
+                "endDate": self._date_text(row[4]),
+            }
+            for row in rows
+        ]
+
+    # =========================================
+    # LIST CLASS SECTIONS
+    # =========================================
+
+    def list_sections(self, semester_id):
+        sql = """
+            SELECT
+                cs.classSectionId,
+                cs.classCode,
+                cs.semesterId,
+                c.courseCode,
+                c.courseName,
+                cs.lecturerId,
+                u.fullName AS lecturerName,
+                cs.room,
+                cs.dayOfWeek,
+                cs.startTime,
+                cs.endTime,
+                cs.maxCapacity,
+                cs.currentEnrollment,
+                c.facultyId AS courseFacultyId,
+                f.facultyName AS courseFacultyName
+            FROM dbo.ClassSections AS cs
+            INNER JOIN dbo.Courses AS c
+                ON c.courseId = cs.courseId
+            INNER JOIN dbo.Faculties AS f
+                ON f.facultyId = c.facultyId
+            LEFT JOIN dbo.Lecturers AS l
+                ON l.lecturerId = cs.lecturerId
+            LEFT JOIN dbo.Users AS u
+                ON u.userId = l.userId
+            WHERE cs.semesterId = ?
+            ORDER BY
+                cs.classCode,
+                cs.classSectionId;
+        """
+
+        rows = self._read_rows(
+            sql,
+            (semester_id,),
+        )
+
+        return [
+            {
+                "classSectionId": row[0],
+                "classCode": row[1],
+                "semesterId": row[2],
+                "courseCode": row[3],
+                "courseName": row[4],
+                "lecturerId": row[5],
+                "lecturerName": row[6],
+                "room": row[7],
+                "dayOfWeek": row[8],
+                "startTime": self._time_text(row[9]),
+                "endTime": self._time_text(row[10]),
+                "maxCapacity": row[11],
+                "currentEnrollment": row[12],
+
+                # NEW: course's faculty, obtained
+                # from the existing Courses table.
+                #
+                # The length checks preserve older
+                # read-only unit test fixtures.
+                "courseFacultyId": (
+                    row[13] if len(row) > 13 else None
+                ),
+                "courseFacultyName": (
+                    row[14] if len(row) > 14 else None
+                ),
+            }
+            for row in rows
+        ]
+
+    # =========================================
+    # LIST LECTURERS
+    # =========================================
+
+    def list_lecturers(self):
+        sql = """
+            SELECT
+                l.lecturerId,
+                u.fullName,
+                l.facultyId,
+                f.facultyName
+            FROM dbo.Lecturers AS l
+            INNER JOIN dbo.Users AS u
+                ON u.userId = l.userId
+            INNER JOIN dbo.Faculties AS f
+                ON f.facultyId = l.facultyId
+            ORDER BY
+                u.fullName,
+                l.lecturerId;
+        """
+
+        rows = self._read_rows(sql)
+
+        return [
+            {
+                "lecturerId": row[0],
+                "fullName": row[1],
+                "facultyId": row[2],
+                "facultyName": row[3],
+            }
+            for row in rows
+        ]
+
+    # =========================================
+    # TRANSACTION LOCK
+    # =========================================
+
+    @staticmethod
+    def _acquire_assignment_lock(cursor):
+        """Serialize assignments handled by this Repository."""
+
+        cursor.execute(
+            """
+            SET NOCOUNT ON;
+
+            DECLARE @lockResult INT;
+
+            EXEC @lockResult = sys.sp_getapplock
+                @Resource = N'SMS_Group05_AssignLecturer',
+                @LockMode = 'Exclusive',
+                @LockOwner = 'Transaction',
+                @LockTimeout = 5000;
+
+            SELECT @lockResult AS lockResult;
+            """
+        )
+
+        while cursor.description is None:
+            if not cursor.nextset():
+                raise AssignmentBusyError(
+                    "Unable to acquire assignment lock."
+                )
+
+        row = cursor.fetchone()
+
+        if row is None or int(row[0]) < 0:
+            raise AssignmentBusyError(
+                "Assignment is busy. Please try again."
+            )
+
+    # =========================================
+    # ASSIGN LECTURER
+    # =========================================
+
+    def assign_lecturer(
+        self,
+        *,
+        class_section_id,
+        lecturer_id,
+    ):
+        if (
+            not isinstance(class_section_id, str)
+            or not class_section_id.strip()
+            or len(class_section_id.strip()) > 10
+        ):
+            raise ValueError(
+                "Invalid Class Section ID."
+            )
+
+        if (
+            not isinstance(lecturer_id, str)
+            or not lecturer_id.strip()
+            or len(lecturer_id.strip()) > 10
+        ):
+            raise ValueError(
+                "Invalid Lecturer ID."
+            )
+
+        class_section_id = class_section_id.strip()
+        lecturer_id = lecturer_id.strip()
+
+        with connection_scope(
+            write=True,
+            connection_factory=self._connection_factory,
+        ) as conn:
+            cursor = conn.cursor()
+
+            try:
+                # 1. Serialize assignment writes.
+                self._acquire_assignment_lock(cursor)
+
+                # 2. Lock the target section.
+                cursor.execute(
+                    """
+                    SELECT
+                        classSectionId,
+                        classCode,
+                        semesterId,
+                        lecturerId,
+                        dayOfWeek,
+                        startTime,
+                        endTime
+                    FROM dbo.ClassSections
+                        WITH (UPDLOCK, HOLDLOCK)
+                    WHERE classSectionId = ?;
+                    """,
+                    class_section_id,
+                )
+
+                section = cursor.fetchone()
+
+                if section is None:
+                    raise AssignmentNotFoundError(
+                        "Class section does not exist."
+                    )
+
+                (
+                    section_id,
+                    class_code,
+                    semester_id,
+                    previous_lecturer_id,
+                    day_of_week,
+                    start_time,
+                    end_time,
+                ) = section
+
+                # 3. Validate the target schedule.
+                if (
+                    day_of_week is None
+                    or start_time is None
+                    or end_time is None
+                ):
+                    raise AssignmentScheduleError(
+                        "Class section schedule is incomplete."
+                    )
+
+                # 4. Validate the lecturer.
+                cursor.execute(
+                    """
+                    SELECT lecturerId
+                    FROM dbo.Lecturers
+                        WITH (HOLDLOCK)
+                    WHERE lecturerId = ?;
+                    """,
+                    lecturer_id,
+                )
+
+                if cursor.fetchone() is None:
+                    raise AssignmentNotFoundError(
+                        "Lecturer does not exist."
+                    )
+
+                # 5. Reject incomplete existing schedules.
+                cursor.execute(
+                    """
+                    SELECT TOP (1)
+                        cs.classCode,
+                        cs.dayOfWeek,
+                        cs.startTime,
+                        cs.endTime
+                    FROM dbo.ClassSections AS cs
+                        WITH (UPDLOCK, HOLDLOCK)
+                    WHERE cs.semesterId = ?
+                      AND cs.lecturerId = ?
+                      AND cs.classSectionId <> ?
+                      AND (
+                          cs.dayOfWeek IS NULL
+                          OR cs.startTime IS NULL
+                          OR cs.endTime IS NULL
+                      )
+                    ORDER BY cs.classCode;
+                    """,
+                    semester_id,
+                    lecturer_id,
+                    section_id,
+                )
+
+                incomplete = cursor.fetchone()
+
+                if incomplete is not None:
+                    raise AssignmentScheduleError(
+                        "Cannot verify teaching schedule: "
+                        f"class section {incomplete[0]} "
+                        "has incomplete schedule information."
+                    )
+
+                # 6. Detect overlapping teaching periods.
+                cursor.execute(
+                    """
+                    SELECT TOP (1)
+                        cs.classCode,
+                        cs.dayOfWeek,
+                        cs.startTime,
+                        cs.endTime
+                    FROM dbo.ClassSections AS cs
+                        WITH (UPDLOCK, HOLDLOCK)
+                    WHERE cs.semesterId = ?
+                      AND cs.lecturerId = ?
+                      AND cs.classSectionId <> ?
+                      AND cs.dayOfWeek = ?
+                      AND cs.startTime < ?
+                      AND cs.endTime > ?
+                    ORDER BY cs.classCode;
+                    """,
+                    semester_id,
+                    lecturer_id,
+                    section_id,
+                    day_of_week,
+                    end_time,
+                    start_time,
+                )
+
+                conflict = cursor.fetchone()
+
+                if conflict is not None:
+                    other_code = conflict[0]
+                    other_day = conflict[1]
+                    other_start = self._time_text(
+                        conflict[2]
+                    )
+                    other_end = self._time_text(
+                        conflict[3]
+                    )
+
+                    raise AssignmentScheduleConflictError(
+                        "Teaching schedule conflict with "
+                        f"{other_code}, day {other_day}, "
+                        f"{other_start}-{other_end}."
+                    )
+
+                # 7. Avoid an unnecessary UPDATE.
+                if previous_lecturer_id == lecturer_id:
+                    return {
+                        "classSectionId": section_id,
+                        "classCode": class_code,
+                        "semesterId": semester_id,
+                        "lecturerId": lecturer_id,
+                        "changed": False,
+                    }
+
+                # 8. Update the existing lecturerId.
+                cursor.execute(
+                    """
+                    UPDATE dbo.ClassSections
+                    SET lecturerId = ?
+                    WHERE classSectionId = ?;
+                    """,
+                    lecturer_id,
+                    section_id,
+                )
+
+                if cursor.rowcount != 1:
+                    raise AssignmentError(
+                        "Assignment could not be saved."
+                    )
+
+                return {
+                    "classSectionId": section_id,
+                    "classCode": class_code,
+                    "semesterId": semester_id,
+                    "lecturerId": lecturer_id,
+                    "changed": True,
+                }
+
+            finally:
+                cursor.close()
