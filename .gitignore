@@ -1,0 +1,33 @@
+
+# Student Management System - Group 05
+
+# Environment and secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python virtual environments
+**/.venv/
+**/venv/
+
+# Python cache
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+*.pyo
+
+# Node.js and Vite
+**/node_modules/
+**/dist/
+**/.vite/
+**/coverage/
+
+# SQL Server backup files
+*.bak
+
+# Logs
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
