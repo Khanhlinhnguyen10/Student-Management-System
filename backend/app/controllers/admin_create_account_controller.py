@@ -54,18 +54,6 @@ def _get_service() -> CreateAccountService:
     )
 
 
-def _get_notifier():
-    """Credential delivery dependency for Use Case 11.
-
-    No delivery provider is configured at this stage.
-    A missing provider MUST block account creation.
-    """
-
-    return current_app.extensions.get(
-        "sms_account_notifier"
-    )
-
-
 @admin_create_account_bp.after_request
 def disable_cache(response):
     """Do not cache account-related responses."""
@@ -133,7 +121,7 @@ def list_majors():
 @admin_create_account_bp.post("")
 @roles_required("Administrator")
 def create_account():
-    """Create an account only when delivery is configured."""
+    """Create an account and hand initial credentials to the Administrator once."""
 
     # -------------------------------------
     # 1. Origin verification
@@ -185,37 +173,6 @@ def create_account():
         ), 400
 
     # -------------------------------------
-    # 4. Delivery prerequisite
-    # -------------------------------------
-
-    notifier = _get_notifier()
-
-    if notifier is None:
-        return jsonify(
-            error=(
-                "Account creation is not yet available "
-                "because credential delivery "
-                "is not configured."
-            )
-        ), 503
-
-    # The provider must implement deliver().
-    delivery_method = getattr(
-        notifier,
-        "deliver",
-        None,
-    )
-
-    if not callable(delivery_method):
-        logger.error(
-            "Create Account: invalid notifier configuration."
-        )
-
-        return jsonify(
-            error="Account delivery configuration is invalid."
-        ), 503
-
-    # -------------------------------------
     # 5. Service validation + SQL commit
     # -------------------------------------
 
@@ -254,40 +211,15 @@ def create_account():
         ), 503
 
     # -------------------------------------
-    # 6. Deliver initial credentials
+    # One-time manual credential handoff
     # -------------------------------------
-    # This happens AFTER the DB commit.
-    # Never return the initial password in JSON.
-
-    try:
-        delivery_method(
-            account=result["account"],
-            credentials=result["initialCredentials"],
-            email=payload.get("email"),
-            phone_number=payload.get("phoneNumber"),
-        )
-
-    except Exception:
-        logger.error(
-            "Create Account: credential delivery failed."
-        )
-
-        # Important: the database COMMIT already happened.
-        # Never claim the transaction was rolled back.
-        return jsonify(
-            error=(
-                "Account was created, but credential "
-                "delivery failed. Do not create "
-                "the same account again."
-            ),
-            account=result["account"],
-        ), 502
-
-    # -------------------------------------
-    # 7. Success
-    # -------------------------------------
-
+    # Only authenticated Administrators reach this endpoint.
+    # React must show the password only in this success response,
+    # never persist it to localStorage or application logs.
+    # The account record already contains only a password hash.
     return jsonify(
         message="Account created successfully.",
         account=result["account"],
+        initialCredentials=result["initialCredentials"],
+        credentialDelivery="manual",
     ), 201

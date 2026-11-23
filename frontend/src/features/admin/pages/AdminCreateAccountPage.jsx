@@ -7,6 +7,9 @@ import {
   BookOpen,
   Building2,
   CheckCircle2,
+  Copy,
+  Eye,
+  EyeOff,
   GraduationCap,
   Loader2,
   RefreshCw,
@@ -182,6 +185,8 @@ export default function AdminCreateAccountPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [outcome, setOutcome] = useState(null);
+  const [showInitialPassword, setShowInitialPassword] = useState(false);
+  const [copyStatus, setCopyStatus] = useState("");
 
   // =========================================
   // SYNC WITH ROUTE
@@ -259,6 +264,8 @@ export default function AdminCreateAccountPage() {
     setAccountType(type);
     setError("");
     setOutcome(null);
+    setShowInitialPassword(false);
+    setCopyStatus("");
 
     setForm((current) => ({
       ...current,
@@ -272,6 +279,20 @@ export default function AdminCreateAccountPage() {
     setForm({ ...EMPTY_FORM });
     setError("");
     setOutcome(null);
+    setShowInitialPassword(false);
+    setCopyStatus("");
+  }
+
+  async function handleCopyPassword() {
+    const password = outcome?.initialCredentials?.initialPassword;
+    if (!password) return;
+
+    try {
+      await navigator.clipboard.writeText(password);
+      setCopyStatus("Copied. Clear your clipboard after handoff.");
+    } catch {
+      setCopyStatus("Copy unavailable. Use Show to read it securely.");
+    }
   }
 
   // =========================================
@@ -318,23 +339,13 @@ export default function AdminCreateAccountPage() {
       setOutcome({
         kind: "success",
         account: result.account,
+        initialCredentials: result.initialCredentials || null,
       });
-
+      setShowInitialPassword(false);
+      setCopyStatus("");
       setForm({ ...EMPTY_FORM });
     } catch (err) {
-      // A delivery failure happens AFTER SQL commit.
-      // Block an immediate retry to avoid duplicate creation.
-      if (err.status === 502) {
-        setOutcome({
-          kind: "deliveryFailed",
-          account: err.data?.account || null,
-          message: err.message,
-        });
-      } else {
-        setError(
-          err.message || "Unable to create account."
-        );
-      }
+      setError(err.message || "Unable to create account.");
     } finally {
       setSubmitting(false);
     }
@@ -412,73 +423,100 @@ export default function AdminCreateAccountPage() {
         </div>
       )}
 
-      {/* SUCCESS / DELIVERY RESULT */}
+      {/* SUCCESS: ONE-TIME MANUAL CREDENTIAL HANDOFF */}
       {outcome && (
-        <div
+        <section
           role="status"
-          className={[
-            "rounded-2xl border px-4 py-4",
-            outcome.kind === "success"
-              ? "border-[#C5E6D6] bg-[#F0FBF5]"
-              : "border-[#F0D8B5] bg-[#FFF9EE]",
-          ].join(" ")}
+          className="rounded-2xl border border-[#C5E6D6] bg-[#F0FBF5] px-4 py-4"
         >
           <div className="flex items-start gap-3">
-            {outcome.kind === "success" ? (
-              <CheckCircle2
-                size={21}
-                className="mt-0.5 shrink-0 text-[#419C79]"
-              />
-            ) : (
-              <AlertCircle
-                size={21}
-                className="mt-0.5 shrink-0 text-[#C28B42]"
-              />
-            )}
-
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-[#3D5A6A]">
-                {outcome.kind === "success"
-                  ? "Account created successfully"
-                  : "Account created, but notification failed"}
-              </p>
-
-              <p className="mt-1 text-xs leading-relaxed text-[#688096]">
-                {outcome.kind === "success"
-                  ? "The account was saved and credential delivery was submitted."
-                  : "The database transaction may already be committed. Do not submit the same account again."}
-              </p>
+            <CheckCircle2
+              size={21}
+              className="mt-0.5 shrink-0 text-[#419C79]"
+            />
+            <div className="min-w-0 flex-1 space-y-3">
+              <div>
+                <p className="text-sm font-bold text-[#3D5A6A]">
+                  Account created successfully
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[#688096]">
+                  Saved to SQL Server. No email was sent. Give the
+                  initial credentials directly to the account owner
+                  through a trusted, private channel.
+                </p>
+              </div>
 
               {outcome.account && (
-                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs font-semibold text-[#4C718D]">
-                  <span>
-                    User ID: {outcome.account.userId}
-                  </span>
-
+                <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs font-semibold text-[#4C718D]">
+                  <span>User ID: {outcome.account.userId}</span>
                   {outcome.account.studentId && (
-                    <span>
-                      Student ID: {outcome.account.studentId}
-                    </span>
+                    <span>Student ID: {outcome.account.studentId}</span>
                   )}
-
                   {outcome.account.lecturerId && (
-                    <span>
-                      Lecturer ID: {outcome.account.lecturerId}
-                    </span>
+                    <span>Lecturer ID: {outcome.account.lecturerId}</span>
                   )}
                 </div>
+              )}
+
+              {outcome.initialCredentials?.initialPassword ? (
+                <div className="rounded-xl border border-[#B9DBC9] bg-white p-3">
+                  <p className="mb-2 text-xs font-bold text-[#3D6C5B]">
+                    Initial credentials - shown only once
+                  </p>
+                  <p className="mb-2 text-xs text-[#536D8D]">
+                    Username: <strong>{outcome.initialCredentials.username}</strong>
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type={showInitialPassword ? "text" : "password"}
+                      readOnly
+                      autoComplete="off"
+                      aria-label="One-time initial password"
+                      value={outcome.initialCredentials.initialPassword}
+                      className="h-9 min-w-0 flex-1 rounded-lg border border-[#D7E4F3] bg-[#F7FAFE] px-3 font-mono text-xs text-[#365D91]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowInitialPassword((v) => !v)}
+                      className="inline-flex h-9 items-center gap-1 rounded-lg border border-[#A8CEE9] bg-white px-2.5 text-xs font-semibold text-[#397DAE]"
+                    >
+                      {showInitialPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      {showInitialPassword ? "Hide" : "Show"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyPassword}
+                      className="inline-flex h-9 items-center gap-1 rounded-lg border border-[#A8CEE9] bg-white px-2.5 text-xs font-semibold text-[#397DAE]"
+                    >
+                      <Copy size={15} /> Copy
+                    </button>
+                  </div>
+                  {copyStatus && (
+                    <p className="mt-2 text-xs text-[#536D8D]">{copyStatus}</p>
+                  )}
+                  <p className="mt-2 text-xs text-[#9A6F40]">
+                    The password disappears when you leave this page or
+                    select Create another account. It cannot be retrieved
+                    from SQL Server. Do not include it in screenshots or logs.
+                  </p>
+                </div>
+              ) : (
+                <p role="alert" className="text-xs font-semibold text-[#AE4757]">
+                  The account was saved but no initial password was returned.
+                  Do not create the same account again; use a secure password reset.
+                </p>
               )}
 
               <button
                 type="button"
                 onClick={handleNewAccount}
-                className="mt-3 rounded-lg border border-[#A8CEE9] bg-white px-3 py-2 text-xs font-semibold text-[#397DAE] transition hover:bg-[#F3F9FF]"
+                className="rounded-lg border border-[#A8CEE9] bg-white px-3 py-2 text-xs font-semibold text-[#397DAE] transition hover:bg-[#F3F9FF]"
               >
                 Create another account
               </button>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* MAIN FORM */}
@@ -720,7 +758,7 @@ export default function AdminCreateAccountPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#EDF1F7] bg-[#FAFCFF] px-5 py-4">
             <p className="max-w-lg text-xs leading-relaxed text-[#8296AB]">
               Account creation requires an active Administrator
-              session and configured credential delivery.
+              session. Initial credentials are shown once for secure handoff.
             </p>
 
             <button

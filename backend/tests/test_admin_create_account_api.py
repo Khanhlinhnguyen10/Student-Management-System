@@ -7,7 +7,7 @@ Use Case 11:
 - Faculty/Major options
 - Input validation
 - Error handling
-- Notification after database commit
+- One-time credential handoff after database commit
 - Required account fields
 
 All tests use mocks and do not modify SQL Server.
@@ -127,13 +127,7 @@ class AdminCreateAccountAPITests(unittest.TestCase):
 
         self.url = "/api/admin/create-account"
 
-    def _enable_notifier(self):
-        notifier = Mock()
-
-        self.app.extensions[
-            "sms_account_notifier"
-        ] = notifier
-
+    def _configure_creation_result(self):
         self.create_service.create_record.return_value = {
             "account": {
                 "accountType": "Student",
@@ -148,8 +142,6 @@ class AdminCreateAccountAPITests(unittest.TestCase):
                 "initialPassword": "internal-test-password",
             },
         }
-
-        return notifier
 
     # =========================================
     # GET OPTIONS
@@ -253,79 +245,49 @@ class AdminCreateAccountAPITests(unittest.TestCase):
         self.create_service.create_record.assert_not_called()
 
     # =========================================
-    # DELIVERY PREREQUISITE
+    # MANUAL CREDENTIAL HANDOFF (NO SMTP)
     # =========================================
 
-    def test_missing_notifier_blocks_creation(self):
+    def test_missing_notifier_does_not_block_creation(self):
+        self._configure_creation_result()
         response = self.client.post(
-            self.url,
-            json=STUDENT_DATA,
-            headers=self.headers,
+            self.url, json=STUDENT_DATA, headers=self.headers
         )
-
-        self.assertEqual(response.status_code, 503)
-        self.create_service.create_record.assert_not_called()
-
-    # =========================================
-    # SUCCESS
-    # =========================================
-
-    def test_create_account_success(self):
-        notifier = self._enable_notifier()
-
-        response = self.client.post(
-            self.url,
-            json=STUDENT_DATA,
-            headers=self.headers,
-        )
-
         self.assertEqual(response.status_code, 201)
-
-        result = response.get_json()
-
-        self.assertEqual(
-            result["account"]["studentId"],
-            "STU0000004",
-        )
-
-        self.assertNotIn(
-            "initialCredentials",
-            result,
-        )
-
         self.create_service.create_record.assert_called_once()
-        notifier.deliver.assert_called_once()
 
-    # =========================================
-    # NOTIFICATION FAILURE
-    # =========================================
-
-    def test_notification_failure_is_not_reported_as_rollback(self):
-        notifier = self._enable_notifier()
-
-        notifier.deliver.side_effect = RuntimeError(
-            "Delivery failed."
-        )
-
+    def test_create_account_returns_one_time_credentials(self):
+        self._configure_creation_result()
         response = self.client.post(
-            self.url,
-            json=STUDENT_DATA,
-            headers=self.headers,
+            self.url, json=STUDENT_DATA, headers=self.headers
         )
-
-        self.assertEqual(response.status_code, 502)
-
-        self.assertIn(
-            "Account was created",
-            response.get_json()["error"],
+        self.assertEqual(response.status_code, 201)
+        data = response.get_json()
+        self.assertEqual(data["credentialDelivery"], "manual")
+        self.assertEqual(data["account"]["studentId"], "STU0000004")
+        self.assertEqual(
+            data["initialCredentials"]["initialPassword"],
+            "internal-test-password",
         )
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
 
+    def test_registered_notifier_is_not_called(self):
+        self._configure_creation_result()
+        notifier = Mock()
+        self.app.extensions["sms_account_notifier"] = notifier
+        response = self.client.post(
+            self.url, json=STUDENT_DATA, headers=self.headers
+        )
+        self.assertEqual(response.status_code, 201)
+        notifier.deliver.assert_not_called()
+
+    # =========================================
     # =========================================
     # VALIDATION ERRORS
     # =========================================
 
     def test_invalid_payload_returns_400(self):
-        self._enable_notifier()
+        self._configure_creation_result()
 
         self.create_service.create_record.side_effect = (
             CreateAccountValidationError(
@@ -342,7 +304,7 @@ class AdminCreateAccountAPITests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_duplicate_username_returns_409(self):
-        self._enable_notifier()
+        self._configure_creation_result()
 
         self.create_service.create_record.side_effect = (
             AccountAlreadyExistsError(
@@ -359,7 +321,7 @@ class AdminCreateAccountAPITests(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
 
     def test_invalid_major_returns_400(self):
-        self._enable_notifier()
+        self._configure_creation_result()
 
         self.create_service.create_record.side_effect = (
             AccountReferenceError(
@@ -376,7 +338,7 @@ class AdminCreateAccountAPITests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_database_error_returns_503(self):
-        self._enable_notifier()
+        self._configure_creation_result()
 
         self.create_service.create_record.side_effect = (
             RuntimeError("Simulated SQL failure")
