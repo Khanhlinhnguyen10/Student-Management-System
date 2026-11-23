@@ -1,0 +1,45 @@
+﻿# Student Management System - Group 05
+# Docker Compose for local development
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    image: sms-group05-backend:compose
+
+    env_file:
+      - ./backend/.env.docker
+
+    entrypoint: ["python"]
+
+    command:
+      - "-m"
+      - "flask"
+      - "--app"
+      - "app:create_app"
+      - "run"
+      - "--host=0.0.0.0"
+      - "--port=5000"
+      - "--no-debugger"
+      - "--no-reload"
+
+    ports:
+      - "127.0.0.1:5001:5000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    image: sms-group05-frontend:compose
+
+    environment:
+      API_PROXY_TARGET: "http://backend:5000"
+
+    ports:
+      - "127.0.0.1:5173:5173"
+
+    depends_on:
+      - backend
